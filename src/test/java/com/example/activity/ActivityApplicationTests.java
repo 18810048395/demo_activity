@@ -10,16 +10,20 @@ import org.activiti.engine.history.HistoricActivityInstanceQuery;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.DeploymentBuilder;
 import org.activiti.engine.runtime.ProcessInstance;
+import org.activiti.engine.task.IdentityLink;
 import org.activiti.engine.task.Task;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
+
+/**
+ *   使用注入activity原先的api,不会受springSecurity影响
+ *   根据业务需要，考虑是否使用activity7新特性
+ *   注意：新特性需要依赖springSecurity，需要配置一些activity的默认权限 (具体参考：Activity7ApplicationTests)
+ */
 @SpringBootTest
 @Slf4j
 class ActivityApplicationTests {
@@ -36,11 +40,11 @@ class ActivityApplicationTests {
     private HistoryService historyService;
 
     /**
-     * 当数据库中没有流程表的话，会先自动创建25张表
+     * 自动建表...(如果bpmn的目录是processes的默目录下，还会自动部署流程。否则需要手动部署流程)
      */
     @Test
     void contextLoads() {
-        log.info("自动建表并部署流程...");
+        log.info("自动建表...");
     }
 
     /**
@@ -51,17 +55,14 @@ class ActivityApplicationTests {
 
         //使用RepositoryService进行部署
         DeploymentBuilder builder = repositoryService.createDeployment();
-        builder.addClasspathResource("process/demo_process.bpmn20.xml");
+        builder.addClasspathResource("process/demo_process.bpmn");
 //        builder.addClasspathResource("process/demo_process.png");
-        builder.name("demo_process");
+        builder.name("demo");
         Deployment deployment = builder.deploy();
 
         //输出部署信息
         System.out.println("流程部署id：" + deployment.getId());
         System.out.println("流程部署名称：" + deployment.getName());
-
-        //流程部署id：125098e1-ffd9-11eb-8847-02004c4f4f50
-        //流程部署名称：demo_process
 
     }
 
@@ -71,16 +72,12 @@ class ActivityApplicationTests {
     @Test
     public void testStartProcess(){
         //根据流程定义Id启动流程
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("myProcess_1");
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo");
 
         //输出实例信息
         System.out.println("流程定义id：" + processInstance.getProcessDefinitionId());
         System.out.println("流程实例id：" + processInstance.getId());
         System.out.println("当前活动Id：" + processInstance.getActivityId());
-
-        //流程定义id：myProcess_1:1:12702ed4-ffd9-11eb-8847-02004c4f4f50
-        //流程实例id：a9b162aa-ffda-11eb-bad1-02004c4f4f50
-        //当前活动Id：null
 
     }
 
@@ -90,28 +87,47 @@ class ActivityApplicationTests {
     @Test
     public void testFindPersonalTaskList() {
         //任务负责人
-        String assignee = "worker";
-
+//        String assignee = "jack";
+        String candidateUser = "rose";
         //根据流程key 和 任务负责人 查询任务
         List<Task> list = taskService.createTaskQuery()
-                .processDefinitionKey("myProcess_1")
+                .processDefinitionKey("demo")
 //                .taskAssignee(assignee)
+                .taskCandidateUser(candidateUser)// 指定组任务查询
                 .list();
-
         for (Task task : list) {
-
             System.out.println("流程实例id：" + task.getProcessInstanceId());
             System.out.println("任务id：" + task.getId());
             System.out.println("任务负责人：" + task.getAssignee());
             System.out.println("任务名称：" + task.getName());
-
         }
+    }
 
-        //流程实例id：a9b162aa-ffda-11eb-bad1-02004c4f4f50
-        //任务id：a9b5815e-ffda-11eb-bad1-02004c4f4f50
-        //任务负责人：manager
-        //任务名称：提交申请
+    /**
+     * 查看组任务成员列表
+     */
+    @Test
+    public void findGroupUser() {
+        String taskId = "07659bbb-8e2b-11ec-a55d-4eebbd9ecca7";
+        List<IdentityLink> list = taskService
+                .getIdentityLinksForTask(taskId);// 获取列表
+        if (list != null && list.size() > 0) {
+            for (IdentityLink il : list) {
+                System.out.println("用户：" + il.getUserId());
+            }
+        }
+    }
 
+    /**
+     * 将组任务分配给个人任务，拾取任务
+     * 注意：认领任务的时候，可以是组任务成员中的人，也可以不是组任务成员的人，此时通过Type的类型为participant来指定任务的办理人
+     * 由一个人去完成任务
+     */
+    @Test
+    public void claim() {
+        String taskId = "07659bbb-8e2b-11ec-a55d-4eebbd9ecca7";//任务ID
+        String userId = "rose";//分配的办理人
+        taskService.claim(taskId, userId);
     }
 
     /**
@@ -123,12 +139,17 @@ class ActivityApplicationTests {
         //根据流程key和任务的负责人查询任务并选择其中的一个任务处理,这里用的
         //是singleResult返回一条，真实环境中是通过步骤5中查询出所有的任务，然后在页面上选择一个任务进行处理.
         Task task = taskService.createTaskQuery()
-                .processDefinitionKey("myProcess_1") //流程Key
-                .taskAssignee("manager")  //要查询的负责人
+                .processDefinitionKey("demo") //流程Key
+                .taskAssignee("rose")  //要查询的负责人
                 .singleResult();
 
         //完成任务,参数：任务id
-        taskService.complete(task.getId());
+        if(null != task ){
+            taskService.complete(task.getId());
+            System.out.println("任务完成==>taskId: "+task.getId());
+        }else {
+            System.out.println("没有查到可执行的任务");
+        }
 
     }
 
