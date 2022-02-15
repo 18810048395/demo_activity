@@ -24,9 +24,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.util.List;
 
 /**
- *   使用注入activity7新版的api,受springSecurity影响
- *   需要提供SecurityUtil模仿登陆，调用API必须有ROLE_ACTIVITI_USER才可以访问
- *   可根据系统的实际情况选择使用老版API还是接入新版API
+ *   使用注入activity7新版的api,受springSecurity影响，
+ *   需要提供SecurityUtil模仿登陆，调用API必须有ROLE_ACTIVITI_USER才可以访问。
+ *   activity7新特性可不通过监听器，手动配置候选人组，
+ *   在画流程图时，可通过springSecurity中的GROUP_activitiTeam进行候选组配置。
+ *   可根据系统的实际情况选择使用老版API还是接入新版API。
  */
 @SpringBootTest
 @Slf4j
