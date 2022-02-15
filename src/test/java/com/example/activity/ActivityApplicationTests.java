@@ -72,12 +72,17 @@ class ActivityApplicationTests {
     @Test
     public void testStartProcess(){
         //根据流程定义Id启动流程
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo");
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo","1001");
 
         //输出实例信息
         System.out.println("流程定义id：" + processInstance.getProcessDefinitionId());
         System.out.println("流程实例id：" + processInstance.getId());
         System.out.println("当前活动Id：" + processInstance.getActivityId());
+        System.out.println("当前业务id：" + processInstance.getBusinessKey());
+
+        // todo 如拓展到实际业务中，可以将流程的业务id和自身的业务表关联起来
+        // holiday.setBusinessKey()
+
 
     }
 
@@ -87,7 +92,7 @@ class ActivityApplicationTests {
     @Test
     public void testFindPersonalTaskList() {
         //任务负责人
-//        String assignee = "jack";
+        String assignee = "jack";
         String candidateUser = "rose";
         //根据流程key 和 任务负责人 查询任务
         List<Task> list = taskService.createTaskQuery()
@@ -97,6 +102,9 @@ class ActivityApplicationTests {
                 .list();
         for (Task task : list) {
             System.out.println("流程实例id：" + task.getProcessInstanceId());
+            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().
+                                                   processInstanceId(task.getProcessInstanceId()).singleResult();
+            System.out.println("流程的业务id：" + processInstance.getBusinessKey());
             System.out.println("任务id：" + task.getId());
             System.out.println("任务负责人：" + task.getAssignee());
             System.out.println("任务名称：" + task.getName());
@@ -125,7 +133,7 @@ class ActivityApplicationTests {
      */
     @Test
     public void claim() {
-        String taskId = "07659bbb-8e2b-11ec-a55d-4eebbd9ecca7";//任务ID
+        String taskId = "4fda5b4a-8e2f-11ec-89fc-4eebbd9ecca7";//任务ID
         String userId = "rose";//分配的办理人
         taskService.claim(taskId, userId);
     }
