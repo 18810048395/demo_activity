@@ -7,9 +7,12 @@ import org.activiti.engine.RuntimeService;
 import org.activiti.engine.TaskService;
 import org.activiti.engine.history.HistoricActivityInstance;
 import org.activiti.engine.history.HistoricActivityInstanceQuery;
+import org.activiti.engine.history.HistoricTaskInstance;
+import org.activiti.engine.history.HistoricTaskInstanceQuery;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.DeploymentBuilder;
 import org.activiti.engine.runtime.ProcessInstance;
+import org.activiti.engine.task.Comment;
 import org.activiti.engine.task.IdentityLink;
 import org.activiti.engine.task.Task;
 import org.junit.jupiter.api.Test;
@@ -153,6 +156,8 @@ class ActivityApplicationTests {
 
         //完成任务,参数：任务id
         if(null != task ){
+            //添加任务流转时的批注
+            taskService.addComment(task.getId(), task.getProcessInstanceId(), "同意");
             taskService.complete(task.getId());
             System.out.println("任务完成==>taskId: "+task.getId());
         }else {
@@ -162,7 +167,7 @@ class ActivityApplicationTests {
     }
 
     /**
-     * 流程结束，或流程流转过程中的历史信息查询
+     * 流程结束，或流程流转过程中的所有历史信息查询
      */
     @Test
     public void findHistoryInfo(){
@@ -180,10 +185,50 @@ class ActivityApplicationTests {
 
             System.out.println("");
             System.out.println("===================-===============");
+            List<Comment> comments = taskService.getTaskComments(hi.getTaskId());
+            if(null!= comments && !comments.isEmpty()){
+                System.out.println(comments.get(0).getFullMessage());
+            }
             System.out.println(hi.getStartTime());
             System.out.println(hi.getAssignee());
             System.out.println(hi.getActivityId());
             System.out.println(hi.getActivityName());
+            System.out.println(hi.getProcessDefinitionId());
+            System.out.println(hi.getProcessInstanceId());
+            System.out.println("===================-===============");
+            System.out.println("");
+
+        }
+    }
+
+    /**
+     * 流程结束，或流程流转过程中的历史信息查询(不含有起始和结束等节点)
+     */
+    @Test
+    public void findHistoryInfo1(){
+
+        //获取 actinst表的查询对象
+        HistoricTaskInstanceQuery instanceQuery = historyService.createHistoricTaskInstanceQuery();
+        //查询 actinst表，条件：根据 InstanceId 查询
+        instanceQuery.processInstanceId("4779ec00-92f8-11ec-87e1-4eebbd9ecca7");
+        //增加排序操作,orderByHistoricActivityInstanceStartTime 根据开始时间排序 asc 升序
+        instanceQuery.orderByHistoricTaskInstanceStartTime().asc();
+        //查询所有内容
+        List<HistoricTaskInstance> activityInstanceList = instanceQuery.list();
+        //输出结果
+        for (HistoricTaskInstance hi : activityInstanceList) {
+
+            System.out.println("");
+            System.out.println("===================-===============");
+            System.out.println(hi.getId());
+            List<Comment> comments = taskService.getTaskComments(hi.getId());
+            if(null!= comments && !comments.isEmpty()){
+                System.out.println(comments.get(0).getFullMessage());
+            }
+            System.out.println(hi.getStartTime());
+            System.out.println(hi.getEndTime());
+            System.out.println(hi.getAssignee());
+            System.out.println(hi.getName());
             System.out.println(hi.getProcessDefinitionId());
             System.out.println(hi.getProcessInstanceId());
             System.out.println("===================-===============");
