@@ -16,5 +16,6 @@ public class MyTaskListener implements TaskListener {
     public void notify(DelegateTask delegateTask) {
         delegateTask.addCandidateUser("rose");//分配组任务的办理人
         delegateTask.addCandidateUser("tom");
+        delegateTask.addCandidateUser("jack");
     }
 }

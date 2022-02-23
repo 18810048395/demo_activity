@@ -5,10 +5,7 @@ import org.activiti.engine.HistoryService;
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.RuntimeService;
 import org.activiti.engine.TaskService;
-import org.activiti.engine.history.HistoricActivityInstance;
-import org.activiti.engine.history.HistoricActivityInstanceQuery;
-import org.activiti.engine.history.HistoricTaskInstance;
-import org.activiti.engine.history.HistoricTaskInstanceQuery;
+import org.activiti.engine.history.*;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.DeploymentBuilder;
 import org.activiti.engine.runtime.ProcessInstance;
@@ -19,7 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -75,7 +75,7 @@ class ActivityApplicationTests {
     @Test
     public void testStartProcess(){
         //根据流程定义Id启动流程
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo","1001");
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo","demo:1002");
 
         //输出实例信息
         System.out.println("流程定义id：" + processInstance.getProcessDefinitionId());
@@ -101,18 +101,55 @@ class ActivityApplicationTests {
         List<Task> list = taskService.createTaskQuery()
                 .processDefinitionKey("demo")
 //                .taskAssignee(assignee)
-                .taskCandidateUser(candidateUser)// 指定组任务查询
+//                .taskCandidateUser(candidateUser)// 指定组任务查询
+                .taskCandidateOrAssigned(assignee)
                 .list();
         for (Task task : list) {
-            System.out.println("流程实例id：" + task.getProcessInstanceId());
             ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().
                                                    processInstanceId(task.getProcessInstanceId()).singleResult();
-            System.out.println("流程的业务id：" + processInstance.getBusinessKey());
+            System.out.println("流程的业务key：" + processInstance.getBusinessKey());
+            System.out.println("流程实例id：" + processInstance.getId());
+            System.out.println("流程定义id：" + processInstance.getProcessDefinitionId());
+            System.out.println("流程开始时间：" + processInstance.getStartTime());
             System.out.println("任务id：" + task.getId());
             System.out.println("任务负责人：" + task.getAssignee());
             System.out.println("任务名称：" + task.getName());
+            System.out.println("任务开始：" + task.getCreateTime());
         }
     }
+
+    @Test
+    public void testFindPersonalDoneTaskList() {
+        Set<String> proInstanceIds = new HashSet<>();
+        // 根据当前登录用户查询已办任务
+        List<HistoricTaskInstance> taskInstances = historyService.createHistoricTaskInstanceQuery()
+                .taskAssignee("jack")
+                .finished()
+                .list();
+
+        for (HistoricTaskInstance task : taskInstances) {
+            proInstanceIds.add(task.getProcessInstanceId());
+        }
+        System.out.println(proInstanceIds);
+
+        List<HistoricProcessInstance> instances = new ArrayList<>();
+        for (String proInstanceId: proInstanceIds) {
+            HistoricProcessInstanceQuery query = historyService.createHistoricProcessInstanceQuery();
+            query.processInstanceId(proInstanceId);
+            instances.addAll(query.list());
+        }
+        for (HistoricProcessInstance historicProcessInstance: instances ) {
+            System.out.println("流程的业务key：" + historicProcessInstance.getBusinessKey());
+            System.out.println("流程实例id：" + historicProcessInstance.getId());
+            System.out.println("流程定义id：" + historicProcessInstance.getProcessDefinitionId());
+            System.out.println("流程开始时间：" + historicProcessInstance.getStartTime());
+            System.out.println("流程结束时间：" + historicProcessInstance.getEndTime());
+        }
+
+
+    }
+
+
 
     /**
      * 查看组任务成员列表
@@ -136,8 +173,8 @@ class ActivityApplicationTests {
      */
     @Test
     public void claim() {
-        String taskId = "4fda5b4a-8e2f-11ec-89fc-4eebbd9ecca7";//任务ID
-        String userId = "rose";//分配的办理人
+        String taskId = "c9b9a70f-944e-11ec-ad08-4eebbd9ecca7";//任务ID
+        String userId = "jack";//分配的办理人
         taskService.claim(taskId, userId);
     }
 
@@ -151,7 +188,7 @@ class ActivityApplicationTests {
         //是singleResult返回一条，真实环境中是通过步骤5中查询出所有的任务，然后在页面上选择一个任务进行处理.
         Task task = taskService.createTaskQuery()
                 .processDefinitionKey("demo") //流程Key
-                .taskAssignee("rose")  //要查询的负责人
+                .taskAssignee("jack")  //要查询的负责人
                 .singleResult();
 
         //完成任务,参数：任务id
