@@ -12,14 +12,12 @@ import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Comment;
 import org.activiti.engine.task.IdentityLink;
 import org.activiti.engine.task.Task;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -58,9 +56,9 @@ class ActivityApplicationTests {
 
         //使用RepositoryService进行部署
         DeploymentBuilder builder = repositoryService.createDeployment();
-        builder.addClasspathResource("process/demo_process.bpmn");
+        builder.addClasspathResource("process/demo0_process.bpmn");
 //        builder.addClasspathResource("process/demo_process.png");
-        builder.name("demo");
+        builder.name("demo0");
         Deployment deployment = builder.deploy();
 
         //输出部署信息
@@ -74,8 +72,11 @@ class ActivityApplicationTests {
      */
     @Test
     public void testStartProcess(){
+        //设置流程变量
+        Map<String,Object> variables = new HashMap<>();
+        variables.put("applyUser","jack");
         //根据流程定义Id启动流程
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo","demo:1002");
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("demo0","demo:1",variables);
 
         //输出实例信息
         System.out.println("流程定义id：" + processInstance.getProcessDefinitionId());
@@ -88,6 +89,16 @@ class ActivityApplicationTests {
 
 
     }
+    @Test
+    public void setVariable(){
+        List<String> candidateUsers = new ArrayList<String>();// 集合
+        candidateUsers .add("rose");
+        candidateUsers .add("tom");
+        candidateUsers .add("jack");
+        String  candidateUser = StringUtils.join(candidateUsers, ",");
+        System.out.println(candidateUser);
+        taskService.setVariable("e82a85f4-9517-11ec-9736-4eebbd9ecca7", "candidateUsers", candidateUser);
+    }
 
     /**
      * 任务查询
@@ -99,7 +110,7 @@ class ActivityApplicationTests {
         String candidateUser = "rose";
         //根据流程key 和 任务负责人 查询任务
         List<Task> list = taskService.createTaskQuery()
-                .processDefinitionKey("demo")
+                .processDefinitionKey("demo0")
 //                .taskAssignee(assignee)
 //                .taskCandidateUser(candidateUser)// 指定组任务查询
                 .taskCandidateOrAssigned(assignee)
@@ -173,7 +184,7 @@ class ActivityApplicationTests {
      */
     @Test
     public void claim() {
-        String taskId = "c9b9a70f-944e-11ec-ad08-4eebbd9ecca7";//任务ID
+        String taskId = "75f23808-9516-11ec-8f7e-4eebbd9ecca7";//任务ID
         String userId = "jack";//分配的办理人
         taskService.claim(taskId, userId);
     }
@@ -187,7 +198,7 @@ class ActivityApplicationTests {
         //根据流程key和任务的负责人查询任务并选择其中的一个任务处理,这里用的
         //是singleResult返回一条，真实环境中是通过步骤5中查询出所有的任务，然后在页面上选择一个任务进行处理.
         Task task = taskService.createTaskQuery()
-                .processDefinitionKey("demo") //流程Key
+                .processDefinitionKey("demo0") //流程Key
                 .taskAssignee("jack")  //要查询的负责人
                 .singleResult();
 
